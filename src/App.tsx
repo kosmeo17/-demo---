@@ -159,9 +159,9 @@ export default function App() {
     }
     setIsTyping(true);
     try {
-      const ai = new GoogleGenerativeAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+      const ai = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
       const chat = ai.chats.create({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         config: {
           systemInstruction: SYSTEM_INSTRUCTION + `\n用户当前已喝水: ${state.currentIntake}ml, 目标: ${state.dailyGoal}ml。`,
         },
