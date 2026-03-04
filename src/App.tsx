@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import confetti from 'canvas-confetti';
 import { 
   Droplets, 
   Plus, 
@@ -12,7 +13,11 @@ import {
   Brain, 
   Send,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Edit2,
+  Check,
+  X,
+  PartyPopper
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -57,17 +62,51 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [activeEmoji, setActiveEmoji] = useState<{ id: number; emoji: string } | null>(null);
   const [isSplashing, setIsSplashing] = useState(false);
+  const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState(state.dailyGoal.toString());
+  const [hasCelebrated, setHasCelebrated] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const emojis = ['😊', '🥤', '💧', '✨', '👍', '🌟', '🥳', '💙', '🧊', '🌊'];
 
   useEffect(() => {
     localStorage.setItem('hydration_state', JSON.stringify(state));
-  }, [state]);
+    
+    // Check for goal completion
+    if (state.currentIntake >= state.dailyGoal && !hasCelebrated && state.dailyGoal > 0) {
+      triggerCelebration();
+    } else if (state.currentIntake < state.dailyGoal) {
+      setHasCelebrated(false);
+    }
+  }, [state, hasCelebrated]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const triggerCelebration = () => {
+    setHasCelebrated(true);
+    
+    const duration = 5 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+    }, 250);
+
+    handleAiResponse("我完成了今天的喝水目标！快夸夸我！");
+  };
 
   const addWater = (amount: number) => {
     const newLog: LogEntry = {
@@ -91,6 +130,15 @@ export default function App() {
 
     // Trigger AI response for logging
     handleAiResponse(`我刚刚喝了 ${amount}ml 水。`);
+  };
+
+  const saveGoal = () => {
+    const newGoal = parseInt(goalInput);
+    if (!isNaN(newGoal) && newGoal > 0) {
+      setState(prev => ({ ...prev, dailyGoal: newGoal }));
+      setIsEditingGoal(false);
+      handleAiResponse(`我把目标改成了 ${newGoal}ml。`);
+    }
   };
 
   const deleteLog = (id: string) => {
@@ -137,6 +185,7 @@ export default function App() {
   };
 
   const progress = Math.min((state.currentIntake / state.dailyGoal) * 100, 100);
+  const isGoalReached = state.currentIntake >= state.dailyGoal;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-blue-100">
@@ -190,8 +239,45 @@ export default function App() {
                     <span className="text-xl text-gray-400 font-medium">ml</span>
                   </div>
                 </div>
-                <div className="bg-blue-50 text-blue-600 px-4 py-2 rounded-2xl text-sm font-bold">
-                  Goal: {state.dailyGoal}ml
+                <div className="flex flex-col items-end gap-2">
+                  {isEditingGoal ? (
+                    <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-blue-200">
+                      <input 
+                        type="number"
+                        value={goalInput}
+                        onChange={(e) => setGoalInput(e.target.value)}
+                        className="w-16 bg-transparent border-none focus:ring-0 text-sm font-bold text-blue-600 px-2"
+                        autoFocus
+                      />
+                      <button onClick={saveGoal} className="p-1 hover:bg-blue-100 text-blue-600 rounded-lg">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setIsEditingGoal(false)} className="p-1 hover:bg-red-100 text-red-500 rounded-lg">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => {
+                        setGoalInput(state.dailyGoal.toString());
+                        setIsEditingGoal(true);
+                      }}
+                      className="group bg-blue-50 text-blue-600 px-4 py-2 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-blue-100 transition-colors"
+                    >
+                      Goal: {state.dailyGoal}ml
+                      <Edit2 className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  )}
+                  {isGoalReached && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center gap-1 text-emerald-600 font-bold text-xs bg-emerald-50 px-3 py-1 rounded-full"
+                    >
+                      <PartyPopper className="w-3 h-3" />
+                      COMPLETED
+                    </motion.div>
+                  )}
                 </div>
               </div>
 
@@ -201,7 +287,10 @@ export default function App() {
                   initial={{ height: 0 }}
                   animate={{ height: `${progress}%` }}
                   transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-                  className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-blue-600 to-blue-400"
+                  className={cn(
+                    "absolute bottom-0 left-0 right-0 transition-colors duration-500",
+                    isGoalReached ? "bg-gradient-to-t from-emerald-600 to-emerald-400" : "bg-gradient-to-t from-blue-600 to-blue-400"
+                  )}
                 >
                   {/* Wave effect */}
                   <div className="absolute top-0 left-0 right-0 h-4 bg-white/20 -translate-y-full blur-sm" />
@@ -220,12 +309,23 @@ export default function App() {
                 </motion.div>
                 
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={cn(
-                    "text-4xl font-black transition-colors duration-500",
-                    progress > 50 ? "text-white/30" : "text-blue-600/10"
-                  )}>
-                    {Math.round(progress)}%
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className={cn(
+                      "text-4xl font-black transition-colors duration-500",
+                      progress > 50 ? "text-white/30" : "text-blue-600/10"
+                    )}>
+                      {Math.round(progress)}%
+                    </span>
+                    {isGoalReached && (
+                      <motion.span 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-white font-bold text-sm mt-2 drop-shadow-md"
+                      >
+                        Congratulations!
+                      </motion.span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Floating Emoji */}
