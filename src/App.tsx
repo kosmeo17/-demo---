@@ -93,26 +93,25 @@ export default function App() {
     });
   };
 
-  const handleAiResponse = async (userMsg: string) => {
+  const handleAiResponse = async (userMsg: string, showInChat = false) => {
+    if (showInChat) {
+      setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    }
     setIsTyping(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
       const chat = ai.chats.create({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         config: {
           systemInstruction: SYSTEM_INSTRUCTION + `\n用户当前已喝水: ${state.currentIntake}ml, 目标: ${state.dailyGoal}ml。`,
         },
       });
-
-      // We don't want to add the "internal" logging message to the UI if it's just a button click,
-      // but if the user typed it, we do.
-      // For now, let's just send it to Gemini and get a response.
       
       const response = await chat.sendMessage({ message: userMsg });
       setMessages(prev => [...prev, { role: 'ai', text: response.text || '哎呀，我渴得说不出话了...' }]);
     } catch (error) {
-      console.error(error);
-      setMessages(prev => [...prev, { role: 'ai', text: '信号不太好，可能是我的电路缺水了。' }]);
+      console.error("AI Error:", error);
+      setMessages(prev => [...prev, { role: 'ai', text: '信号不太好，可能是我的电路缺水了。请检查网络或稍后再试。' }]);
     } finally {
       setIsTyping(false);
     }
@@ -121,9 +120,8 @@ export default function App() {
   const handleSend = async () => {
     if (!input.trim()) return;
     const userMsg = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setInput('');
-    await handleAiResponse(userMsg);
+    await handleAiResponse(userMsg, true);
   };
 
   const progress = Math.min((state.currentIntake / state.dailyGoal) * 100, 100);
@@ -218,7 +216,7 @@ export default function App() {
           {/* Context Widgets */}
           <div className="grid grid-cols-2 gap-4">
             <button 
-              onClick={() => handleAiResponse("我正准备开始写代码，给我点建议。")}
+              onClick={() => handleAiResponse("我正准备开始写代码，给我点建议。", true)}
               className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-3 text-left group"
             >
               <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
@@ -228,7 +226,7 @@ export default function App() {
               <span className="text-xs text-gray-500">Boost focus with hydration</span>
             </button>
             <button 
-              onClick={() => handleAiResponse("我刚运动完，口渴死了。")}
+              onClick={() => handleAiResponse("我刚运动完，口渴死了。", true)}
               className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-3 text-left group"
             >
               <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -241,7 +239,7 @@ export default function App() {
 
           {/* Cold Knowledge Widget */}
           <button 
-            onClick={() => handleAiResponse("给我讲个关于喝水的冷知识吧。")}
+            onClick={() => handleAiResponse("给我讲个关于喝水的冷知识吧。", true)}
             className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 p-6 rounded-3xl text-white shadow-lg shadow-indigo-100 flex items-center gap-4 group active:scale-[0.98] transition-all"
           >
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
