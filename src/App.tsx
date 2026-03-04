@@ -159,16 +159,13 @@ export default function App() {
     }
     setIsTyping(true);
     try {
-      const ai = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || "");
-const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-const chat = model.startChat({
-  history: [], // 如果不需要历史记录可以留空
-  generationConfig: {
-    // 这里放参数，但通常默认即可
-  },
-  systemInstruction: SYSTEM_INSTRUCTION + `\n用户当前已喝水: ${state.currentIntake}ml, 目标: ${state.dailyGoal}ml。`,
-});
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+      const chat = ai.chats.create({
+        model: "gemini-3-flash-preview",
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION + `\n用户当前已喝水: ${state.currentIntake}ml, 目标: ${state.dailyGoal}ml。`,
+        },
+      });
       
       const response = await chat.sendMessage({ message: userMsg });
       setMessages(prev => [...prev, { role: 'ai', text: response.text || '哎呀，我渴得说不出话了...' }]);
