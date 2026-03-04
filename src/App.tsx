@@ -55,7 +55,11 @@ export default function App() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [activeEmoji, setActiveEmoji] = useState<{ id: number; emoji: string } | null>(null);
+  const [isSplashing, setIsSplashing] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const emojis = ['😊', '🥤', '💧', '✨', '👍', '🌟', '🥳', '💙', '🧊', '🌊'];
 
   useEffect(() => {
     localStorage.setItem('hydration_state', JSON.stringify(state));
@@ -76,6 +80,14 @@ export default function App() {
       currentIntake: prev.currentIntake + amount,
       logs: [newLog, ...prev.logs],
     }));
+
+    // Trigger animations
+    setIsSplashing(true);
+    setTimeout(() => setIsSplashing(false), 1000);
+
+    const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+    setActiveEmoji({ id: Date.now(), emoji: randomEmoji });
+    setTimeout(() => setActiveEmoji(null), 2000);
 
     // Trigger AI response for logging
     handleAiResponse(`我刚刚喝了 ${amount}ml 水。`);
@@ -158,7 +170,15 @@ export default function App() {
           {/* Main Progress Card */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={{ 
+              opacity: 1, 
+              y: 0,
+              scale: isSplashing ? [1, 1.02, 1] : 1
+            }}
+            transition={{ 
+              duration: 0.3,
+              scale: { duration: 0.2 }
+            }}
             className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 relative overflow-hidden"
           >
             <div className="relative z-10">
@@ -185,7 +205,20 @@ export default function App() {
                 >
                   {/* Wave effect */}
                   <div className="absolute top-0 left-0 right-0 h-4 bg-white/20 -translate-y-full blur-sm" />
+                  
+                  {/* Splash Effect */}
+                  <AnimatePresence>
+                    {isSplashing && (
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0.8 }}
+                        animate={{ scale: 2, opacity: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-20 bg-white/40 rounded-full blur-xl"
+                      />
+                    )}
+                  </AnimatePresence>
                 </motion.div>
+                
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className={cn(
                     "text-4xl font-black transition-colors duration-500",
@@ -194,6 +227,21 @@ export default function App() {
                     {Math.round(progress)}%
                   </span>
                 </div>
+
+                {/* Floating Emoji */}
+                <AnimatePresence>
+                  {activeEmoji && (
+                    <motion.div
+                      key={activeEmoji.id}
+                      initial={{ y: 20, opacity: 0, scale: 0.5 }}
+                      animate={{ y: -100, opacity: 1, scale: 1.5 }}
+                      exit={{ opacity: 0, scale: 2 }}
+                      className="absolute left-1/2 -translate-x-1/2 bottom-1/4 text-4xl pointer-events-none z-20"
+                    >
+                      {activeEmoji.emoji}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Quick Add Buttons */}
