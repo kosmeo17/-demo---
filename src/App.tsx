@@ -159,7 +159,7 @@ export default function App() {
     }
     setIsTyping(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
+      const ai = new GoogleGenerativeAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
       const chat = ai.chats.create({
         model: "gemini-2.0-flash",
         config: {
