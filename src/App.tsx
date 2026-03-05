@@ -23,8 +23,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format } from 'date-fns';
 import Markdown from 'react-markdown';
-import { GoogleGenAI } from "@google/genai";
-import { SYSTEM_INSTRUCTION, LogEntry, UserState, DEFAULT_GOAL } from './types';
+import { LogEntry, UserState, DEFAULT_GOAL, SYSTEM_INSTRUCTION } from './types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -159,19 +158,27 @@ export default function App() {
     }
     setIsTyping(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-      const chat = ai.chats.create({
-        model: "gemini-3-flash-preview",
-        config: {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMsg,
+          history: messages,
           systemInstruction: SYSTEM_INSTRUCTION + `\n用户当前已喝水: ${state.currentIntake}ml, 目标: ${state.dailyGoal}ml。`,
-        },
+        }),
       });
-      
-      const response = await chat.sendMessage({ message: userMsg });
-      setMessages(prev => [...prev, { role: 'ai', text: response.text || '哎呀，我渴得说不出话了...' }]);
-    } catch (error) {
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch AI response');
+      }
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'ai', text: data.text || '哎呀，我渴得说不出话了...' }]);
+    } catch (error: any) {
       console.error("AI Error:", error);
-      setMessages(prev => [...prev, { role: 'ai', text: '信号不太好，可能是我的电路缺水了。请检查网络或稍后再试。' }]);
+      const errorMsg = error.message || '未知错误';
+      setMessages(prev => [...prev, { role: 'ai', text: `信号不太好，可能是我的电路缺水了。\n\n**错误详情:** ${errorMsg}\n\n请检查网络或稍后再试。` }]);
     } finally {
       setIsTyping(false);
     }
